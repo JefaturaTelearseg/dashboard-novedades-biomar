@@ -469,12 +469,8 @@
     evid.forEach((n) => { const f = n.fotos.find((x) => !vistas.has(x)); if (f && fotos.length < 4) { vistas.add(f); fotos.push({ f, n }); } });
     const enlace = META.enlace || (location.origin + location.pathname);
 
-    $('#informe').innerHTML = `
-      <img class="i-membrete" src="img/marca/membrete.jpg" alt="">
-      <table class="i-marco"><thead><tr><td><div class="i-esp-sup"></div></td></tr></thead>
-      <tfoot><tr><td><div class="i-esp-inf"></div></td></tr></tfoot>
-      <tbody><tr><td class="i-cuerpo">
-
+    const pagina = (html) => `<div class="i-pagina"><img class="i-membrete" src="img/marca/membrete.jpg" alt=""><div class="i-contenido">${html}</div></div>`;
+    $('#informe').innerHTML = pagina(`
         <div class="i-cab">
           <div><span class="i-tag">Informe ejecutivo</span><h1>Novedades del servicio de monitoreo CCTV</h1><p>Cliente <b>BioMar</b> · Periodo ${periodo} · Corte al ${fechaHoy()}</p></div>
           <img src="img/marca/biomar.png" alt="BioMar">
@@ -500,13 +496,12 @@
 
         <div class="i-dos">
           <section><h3>Novedades por mes</h3>${gMes}
-            <div class="i-ley"><span class="alto">Alto</span><span class="medio">Medio</span><span class="bajo">Bajo</span></div></section>
+            <div class="i-ley"><span><i class="alto"></i>Alto</span><span><i class="medio"></i>Medio</span><span><i class="bajo"></i>Bajo</span></div></section>
           <section><h3>Momento del día</h3>
             <div class="i-franjas">${franjas.map((f) => `<div class="${f.n === Math.max(...franjas.map((x) => x.n)) && f.n ? 'max' : ''}"><b>${f.n}</b><span>${f.nom}</span><small>${hh(f.a)}:00 – ${hh(f.b - 1)}:59 · ${pct(f.n, conHora.length)}%</small></div>`).join('')}</div>
           </section>
-        </div>
-
-        <h2 class="i-salto">Análisis por tipo y zona</h2>
+        </div>`) + pagina(`
+        <h2 class="primero">Análisis por tipo y zona</h2>
         <div class="i-dos">
           <section><h3>Tipo de novedad</h3>${barras(cats, (o) => ({ logistica: 'Vehículos de carga', procedimiento: 'Fallas de procedimiento', descanso: 'Agente en descanso/ausente' }[o.clave] || META.categorias[o.clave] || o.clave))}</section>
           <section><h3>Zonas con más novedades</h3>${barras(zonas.slice(0, 7), (o) => o.clave)}</section>
@@ -516,11 +511,12 @@
         <ol class="i-lista num">${recomendaciones.map((t) => `<li>${t}</li>`).join('')}</ol>
 
         ${fotos.length ? `<h2>Evidencias destacadas</h2>
-        <div class="i-fotos">${fotos.map((o) => `<figure><img src="img/evidencias/${o.f}.jpg" alt=""><figcaption><span class="i-pill ${NIVEL_INFO[o.n.nivel].clase}">${NIVEL_INFO[o.n.nivel].nombre}</span> ${esc(o.n.titulo)}<small>${fechaTxt(o.n.fecha)}${o.n.hora ? ' · ' + o.n.hora + ' h' : ''} · ${esc(o.n.zona)}</small></figcaption></figure>`).join('')}</div>` : ''}
+        <div class="i-fotos">${fotos.map((o) => `<figure><div class="foto-img" style="background-image:url('img/evidencias/${o.f}.jpg')"></div><figcaption><span class="i-pill ${NIVEL_INFO[o.n.nivel].clase}">${NIVEL_INFO[o.n.nivel].nombre}</span> ${esc(o.n.titulo)}<small>${fechaTxt(o.n.fecha)}${o.n.hora ? ' · ' + o.n.hora + ' h' : ''} · ${esc(o.n.zona)}</small></figcaption></figure>`).join('')}</div>` : ''}
 
-        ${criticas.length ? `<h2 class="i-salto">Novedades de nivel ${nivelTabla} (${criticas.length})</h2>
+        `) + pagina(`
+        ${criticas.length ? `<h2 class="primero">Novedades de nivel ${nivelTabla} (${criticas.length})</h2>
         <table class="i-tabla compacta"><thead><tr><th>Fecha y hora</th><th>Zona</th><th>Novedad</th><th>Involucrado</th></tr></thead><tbody>${criticas.slice(0, MAX_FILAS).map(filaNov).join('')}</tbody></table>
-        ${criticas.length > MAX_FILAS ? `<p class="i-nota">Y ${criticas.length - MAX_FILAS} novedades más de nivel ${nivelTabla}, disponibles en el dashboard.</p>` : ''}` : '<div class="i-salto"></div>'}
+        ${criticas.length > MAX_FILAS ? `<p class="i-nota">Y ${criticas.length - MAX_FILAS} novedades más de nivel ${nivelTabla}, disponibles en el dashboard.</p>` : ''}` : '<h2 class="primero">Cierre</h2>'}
 
         <div class="i-firma">
           <p>El detalle completo de las ${total} novedades, con la acción adoptada en cada caso y las ${fotosN} evidencias fotográficas, está disponible en el dashboard de novedades: <b>${esc(enlace)}</b></p>
@@ -528,16 +524,58 @@
           <p>Atentamente,</p>
           <div class="i-linea"></div>
           <b>${esc(inf.firma || '')}</b><span>${esc(inf.cargoFirma || '')}</span>
-        </div>
-      </td></tr></tbody></table>`;
+        </div>`);
 
-    if (sinImprimir === true) return;
-    const imgs = [...document.querySelectorAll('#informe img')];
-    const prev = document.title;
-    document.title = `Informe ejecutivo novedades BioMar - ${fechaHoy()}`;
-    Promise.all(imgs.map((im) => im.complete ? Promise.resolve() : new Promise((r) => { im.onload = im.onerror = r; })))
-      .then(() => { window.print(); setTimeout(() => { document.title = prev; }, 1000); });
+    return exportarPdf(sinImprimir === true);
   }
+
+  // Convierte las 3 hojas a PDF y lo descarga (sin diálogo de impresión)
+  const LIBS = [
+    'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
+  ];
+  function cargarScript(src) {
+    return new Promise((ok, mal) => {
+      if (document.querySelector(`script[src="${src}"]`)) return ok();
+      const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => mal(new Error('No se pudo cargar ' + src));
+      document.head.appendChild(s);
+    });
+  }
+  function esperarImagenes(cont) {
+    const urls = [...cont.querySelectorAll('img')].map((i) => i.src)
+      .concat([...cont.querySelectorAll('.foto-img')].map((d) => d.style.backgroundImage.slice(5, -2)));
+    return Promise.all(urls.map((u) => new Promise((r) => { const im = new Image(); im.onload = im.onerror = r; im.src = u; })));
+  }
+  async function exportarPdf(soloArmar) {
+    const cont = $('#informe');
+    const aviso = document.createElement('div');
+    aviso.className = 'generando';
+    aviso.innerHTML = '<div><i></i>Generando informe PDF…</div>';
+    if (!soloArmar) document.body.appendChild(aviso);
+    cont.classList.add('armando');
+    try {
+      await Promise.all([...LIBS.map(cargarScript), esperarImagenes(cont), document.fonts ? document.fonts.ready : null]);
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+      const hojas = [...cont.querySelectorAll('.i-pagina')];
+      const lienzos = [];
+      for (let i = 0; i < hojas.length; i++) {
+        const lienzo = await window.html2canvas(hojas[i], { scale: 2.2, useCORS: true, backgroundColor: '#ffffff', logging: false });
+        lienzos.push(lienzo);
+        if (i) pdf.addPage();
+        pdf.addImage(lienzo.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+      }
+      const nombre = `Informe ejecutivo novedades BioMar ${new Date().toLocaleDateString('es-EC').replace(/\//g, '-')}.pdf`;
+      if (soloArmar) return { pdf, lienzos, nombre };
+      pdf.save(nombre);
+    } catch (e) {
+      alert('No se pudo generar el PDF: ' + e.message);
+    } finally {
+      cont.classList.remove('armando');
+      aviso.remove();
+    }
+  }
+  window.__informeBiomar = () => generarInforme(true);
 
   // ---------- Render general ----------
   function render() {
