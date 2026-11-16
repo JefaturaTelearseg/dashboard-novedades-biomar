@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Novedades BioMar · TeleArseg</title>
+  <meta name="description" content="Dashboard de novedades por nivel de riesgo del Centro de Monitoreo TeleArseg para BioMar.">
+  <link rel="icon" type="image/png" href="img/marca/escudo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+  <!-- Barra superior -->
+  <header class="barra">
+    <a class="marca" href="#inicio"><img src="img/marca/logo-blanco.png" alt="TeleArseg"></a>
+    <span class="titulo-portal">Portal de monitoreo</span>
+    <nav class="menu" id="menu">
+      <a href="#inicio" class="activo">Resumen</a>
+      <a href="#niveles">Niveles</a>
+      <a href="#analisis">Análisis</a>
+      <a href="#novedades">Novedades</a>
+      <a href="#evidencias">Evidencias</a>
+    </nav>
+    <div class="cliente-chip" title="Cliente">
+      <img src="img/marca/biomar.png" alt="BioMar">
+      <span><small>Cliente</small>BioMar</span>
+    </div>
+  </header>
+
+  <main class="contenido" id="inicio">
+    <!-- Portada: mosaico de cámaras con el logo al centro -->
+    <section class="portada">
+      <div class="mosaico-fotos" id="mosaico"></div>
+      <div class="portada-marca">
+        <span class="esq e1"></span><span class="esq e2"></span><span class="esq e3"></span><span class="esq e4"></span>
+        <img src="img/marca/logo-portada.png" alt="TeleArseg">
+        <div class="portada-lema"><span>NOVEDADES</span><b>·</b><span>NIVELES DE RIESGO</span><b>·</b><span>EVIDENCIAS</span></div>
+      </div>
+      <div class="portada-texto">
+        <div class="en-vivo"><i></i>CENTRO DE MONITOREO 24/7</div>
+        <h1>Novedades <span class="grad">BIOMAR</span></h1>
+        <p id="portada-sub">Matriz de incidentes 2026</p>
+      </div>
+      <div class="portada-cliente">
+        <img src="img/marca/biomar.png" alt="BioMar">
+      </div>
+    </section>
+
+    <!-- Filtros -->
+    <section class="filtros" id="filtros" aria-label="Filtros">
+      <div class="chips-nivel" role="group" aria-label="Nivel de riesgo">
+        <button class="chip activo" data-nivel="TODOS">Todos</button>
+        <button class="chip alto" data-nivel="ALTO"><span class="dot"></span>Alto</button>
+        <button class="chip medio" data-nivel="MEDIO"><span class="dot"></span>Medio</button>
+        <button class="chip bajo" data-nivel="BAJO"><span class="dot"></span>Bajo</button>
+      </div>
+      <label class="campo"><span>Mes</span><select id="f-mes"></select></label>
+      <label class="campo"><span>Zona</span><select id="f-zona"></select></label>
+      <label class="campo"><span>Tipo</span><select id="f-cat"></select></label>
+      <label class="campo buscar"><span>Buscar</span><input id="f-buscar" type="search" placeholder="Garita, ronda, vehículo…"></label>
+      <button class="btn-limpiar" id="f-limpiar" title="Quitar filtros">Limpiar</button>
+      <div class="contador" id="contador"></div>
+    </section>
+
+    <!-- Indicadores -->
+    <section class="tarjetas" id="kpis"></section>
+
+    <!-- Niveles -->
+    <section class="bloque" id="niveles">
+      <div class="bloque-cab">
+        <div>
+          <h2>Novedades por nivel de riesgo</h2>
+          <p>Cada nivel según la matriz de incidentes. Toca un nivel para ver solo sus novedades.</p>
+        </div>
+      </div>
+      <div class="niveles" id="niveles-grid"></div>
+    </section>
+
+    <!-- Análisis -->
+    <section class="bloque" id="analisis">
+      <div class="bloque-cab">
+        <div>
+          <h2>Análisis</h2>
+          <p>Las barras se dividen por nivel: <span class="ley alto">Alto</span> <span class="ley medio">Medio</span> <span class="ley bajo">Bajo</span></p>
+        </div>
+      </div>
+      <div class="graficos">
+        <article class="panel ancho">
+          <header><h3>Novedades por mes</h3><span class="nota" id="nota-mes"></span></header>
+          <div id="g-mes" class="g-mes"></div>
+        </article>
+        <article class="panel ancho">
+          <header><h3>Hora del día</h3><span class="nota">Cuándo ocurren las novedades (con hora registrada)</span></header>
+          <div id="g-hora"></div>
+        </article>
+        <article class="panel">
+          <header><h3>Zonas con más novedades</h3></header>
+          <div id="g-zona" class="barras-h"></div>
+        </article>
+        <article class="panel">
+          <header><h3>Tipo de novedad</h3></header>
+          <div id="g-cat" class="barras-h"></div>
+        </article>
+        <article class="panel">
+          <header><h3>Operadores CCTV</h3><span class="nota">Novedades registradas por cada operador</span></header>
+          <div id="g-oper" class="operadores"></div>
+        </article>
+        <article class="panel">
+          <header><h3>Involucrado en el procedimiento</h3></header>
+          <div id="g-inv" class="barras-h"></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- Novedades -->
+    <section class="bloque" id="novedades">
+      <div class="bloque-cab">
+        <div>
+          <h2>Registro de novedades</h2>
+          <p>Toca una novedad para ver el detalle completo y sus fotos.</p>
+        </div>
+        <div class="acciones">
+          <div class="segmento" role="group" aria-label="Vista">
+            <button class="activo" data-vista="tiempo">Línea de tiempo</button>
+            <button data-vista="nivel">Por nivel</button>
+            <button data-vista="tabla">Tabla</button>
+          </div>
+          <button class="btn" id="btn-csv">Descargar CSV</button>
+        </div>
+      </div>
+      <div id="lista"></div>
+    </section>
+
+    <!-- Evidencias -->
+    <section class="bloque" id="evidencias">
+      <div class="bloque-cab">
+        <div>
+          <h2>Evidencias fotográficas</h2>
+          <p id="evid-sub">Capturas de las cámaras adjuntas al informe de novedades.</p>
+        </div>
+      </div>
+      <div class="galeria" id="galeria"></div>
+    </section>
+
+    <footer class="pie">
+      <img src="img/marca/escudo-blanco.png" alt="">
+      <div>
+        <strong>TeleArseg · Centro de Monitoreo 24/7</strong>
+        <span>CCTV · GPS · Internet · Soporte técnico · Torres · Paneles solares</span>
+        <span class="fuentes">Fuentes: Matriz de incidentes BioMar 2026 y Novedades BioMar (informe). <span id="pie-act"></span></span>
+      </div>
+    </footer>
+  </main>
+
+  <!-- Detalle de novedad -->
+  <div class="modal" id="modal" hidden>
+    <div class="modal-fondo" data-cerrar></div>
+    <div class="modal-caja" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+      <button class="modal-x" data-cerrar aria-label="Cerrar">×</button>
+      <div id="modal-cuerpo"></div>
+    </div>
+  </div>
+
+  <!-- Visor de fotos -->
+  <div class="visor" id="visor" hidden>
+    <button class="visor-x" aria-label="Cerrar">×</button>
+    <button class="visor-nav prev" aria-label="Anterior">‹</button>
+    <figure><img id="visor-img" alt=""><figcaption id="visor-cap"></figcaption></figure>
+    <button class="visor-nav next" aria-label="Siguiente">›</button>
+  </div>
+
+  <div class="tooltip" id="tooltip" role="tooltip"></div>
+
+  <script src="data/novedades.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
