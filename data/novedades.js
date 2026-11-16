@@ -15,6 +15,7 @@ window.NOVEDADES_META = {
   cliente: 'BIOMAR',
   anio: 2026,
   actualizado: '2026-11-16',
+  enlace: 'https://jefaturatelearseg.github.io/dashboard-novedades-biomar/',
   // Datos del informe ejecutivo en PDF (cámbialos cuando haga falta)
   informe: {
     destinatario: 'Ing. Dick',

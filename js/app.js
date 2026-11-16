@@ -444,7 +444,7 @@
     }) : [];
     const maxMes = Math.max(1, ...porMes.map((o) => o.total));
     const gMes = `<div class="i-mes">${porMes.map((o) => `<div class="i-col"><span class="i-num">${o.total || ''}</span>
-        <div class="i-pila">${NIVELES.filter((nv) => o[nv]).map((nv) => `<i class="${NIVEL_INFO[nv].clase}" style="height:${(o[nv] / maxMes) * 29}mm"></i>`).join('')}</div>
+        <div class="i-pila">${NIVELES.filter((nv) => o[nv]).map((nv) => `<i class="${NIVEL_INFO[nv].clase}" style="height:${(o[nv] / maxMes) * 24}mm"></i>`).join('')}</div>
         <span class="i-lbl">${MES_CORTO[o.m]}</span></div>`).join('')}</div>`;
     const barras = (filas, nombre) => { const mx = Math.max(1, ...filas.map((o) => o.total)); return filas.map((o) => `<div class="i-fila"><span>${esc(nombre(o))}</span><span class="i-pista">${NIVELES.filter((nv) => o[nv]).map((nv) => `<i class="${NIVEL_INFO[nv].clase}" style="width:${(o[nv] / mx) * 100}%"></i>`).join('')}</span><b>${o.total}</b></div>`).join(''); };
     const franjas = [['Madrugada', 0, 6], ['Mañana', 6, 12], ['Tarde', 12, 18], ['Noche', 18, 24]].map(([nom, a, b]) => ({ nom, a, b, n: h.slice(a, b).reduce((s, v) => s + v, 0) }));
@@ -458,12 +458,16 @@
     ].filter(Boolean);
     const recomendaciones = cats.slice(0, 4).map((o) => RECOMENDACION[o.clave]).filter(Boolean);
 
-    const altos = lista.filter((n) => n.nivel === 'ALTO').slice().reverse();
-    const filaNov = (n) => `<tr><td class="nw">${fechaTxt(n.fecha)}${n.hora ? `<br><small>${n.hora} h</small>` : ''}</td><td><span class="i-pill ${NIVEL_INFO[n.nivel].clase}">${NIVEL_INFO[n.nivel].nombre}</span></td><td>${esc(n.zona)}</td><td><b>${esc(n.titulo)}</b><br><small>${esc(n.detalle.length > 210 ? n.detalle.slice(0, 207) + '…' : n.detalle)}</small></td></tr>`;
+    // Hoja 3: lista compacta de novedades críticas (si no hay Alto, las más recientes de Medio)
+    const MAX_FILAS = 14;
+    const criticas = (c.ALTO ? lista.filter((n) => n.nivel === 'ALTO') : lista.filter((n) => n.nivel === 'MEDIO')).slice().reverse();
+    const nivelTabla = c.ALTO ? 'Alto' : 'Medio';
+    const invCorto = (g) => ({ 'Patrulla de Reacción': 'Patrulla', 'Agente de Seguridad': 'Agente' }[g] || g);
+    const filaNov = (n) => `<tr><td class="nw">${fechaTxt(n.fecha)}${n.hora ? ` · ${n.hora}` : ''}</td><td class="nw">${esc(n.zona)}</td><td><b>${esc(n.titulo)}</b></td><td class="nw">${esc(invCorto(n.grupoInv))}</td></tr>`;
     const evid = lista.slice().sort((a, b) => NIVELES.indexOf(a.nivel) - NIVELES.indexOf(b.nivel) || b.fecha.localeCompare(a.fecha)).filter((n) => n.fotos.length);
     const vistas = new Set(); const fotos = [];
-    evid.forEach((n) => { const f = n.fotos.find((x) => !vistas.has(x)); if (f && fotos.length < 6) { vistas.add(f); fotos.push({ f, n }); } });
-    const resto = lista.filter((n) => n.nivel !== 'ALTO').slice().reverse();
+    evid.forEach((n) => { const f = n.fotos.find((x) => !vistas.has(x)); if (f && fotos.length < 4) { vistas.add(f); fotos.push({ f, n }); } });
+    const enlace = META.enlace || (location.origin + location.pathname);
 
     $('#informe').innerHTML = `
       <img class="i-membrete" src="img/marca/membrete.jpg" alt="">
@@ -492,9 +496,8 @@
         </div>
 
         <h2>Hallazgos principales</h2>
-        <ul class="i-lista">${hallazgos.map((t) => `<li>${t}</li>`).join('')}</ul>
+        <ul class="i-lista">${hallazgos.slice(0, 4).map((t) => `<li>${t}</li>`).join('')}</ul>
 
-        <h2 class="i-salto">Análisis del periodo</h2>
         <div class="i-dos">
           <section><h3>Novedades por mes</h3>${gMes}
             <div class="i-ley"><span class="alto">Alto</span><span class="medio">Medio</span><span class="bajo">Bajo</span></div></section>
@@ -503,6 +506,7 @@
           </section>
         </div>
 
+        <h2 class="i-salto">Análisis por tipo y zona</h2>
         <div class="i-dos">
           <section><h3>Tipo de novedad</h3>${barras(cats, (o) => ({ logistica: 'Vehículos de carga', procedimiento: 'Fallas de procedimiento', descanso: 'Agente en descanso/ausente' }[o.clave] || META.categorias[o.clave] || o.clave))}</section>
           <section><h3>Zonas con más novedades</h3>${barras(zonas.slice(0, 7), (o) => o.clave)}</section>
@@ -511,17 +515,16 @@
         <h2>Recomendaciones</h2>
         <ol class="i-lista num">${recomendaciones.map((t) => `<li>${t}</li>`).join('')}</ol>
 
-        ${altos.length ? `<h2 class="i-salto">Novedades de nivel Alto (${altos.length})</h2>
-        <table class="i-tabla"><thead><tr><th>Fecha</th><th>Nivel</th><th>Zona</th><th>Novedad y acción adoptada</th></tr></thead><tbody>${altos.map(filaNov).join('')}</tbody></table>` : ''}
-
-        ${fotos.length ? `<h2 class="${altos.length ? '' : 'i-salto'}">Evidencias destacadas</h2>
+        ${fotos.length ? `<h2>Evidencias destacadas</h2>
         <div class="i-fotos">${fotos.map((o) => `<figure><img src="img/evidencias/${o.f}.jpg" alt=""><figcaption><span class="i-pill ${NIVEL_INFO[o.n.nivel].clase}">${NIVEL_INFO[o.n.nivel].nombre}</span> ${esc(o.n.titulo)}<small>${fechaTxt(o.n.fecha)}${o.n.hora ? ' · ' + o.n.hora + ' h' : ''} · ${esc(o.n.zona)}</small></figcaption></figure>`).join('')}</div>` : ''}
 
-        ${resto.length ? `<h2 class="i-salto">Anexo: detalle de novedades de nivel Medio y Bajo (${resto.length})</h2>
-        <table class="i-tabla compacta"><thead><tr><th>Fecha</th><th>Nivel</th><th>Zona</th><th>Novedad y acción adoptada</th></tr></thead><tbody>${resto.map(filaNov).join('')}</tbody></table>` : ''}
+        ${criticas.length ? `<h2 class="i-salto">Novedades de nivel ${nivelTabla} (${criticas.length})</h2>
+        <table class="i-tabla compacta"><thead><tr><th>Fecha y hora</th><th>Zona</th><th>Novedad</th><th>Involucrado</th></tr></thead><tbody>${criticas.slice(0, MAX_FILAS).map(filaNov).join('')}</tbody></table>
+        ${criticas.length > MAX_FILAS ? `<p class="i-nota">Y ${criticas.length - MAX_FILAS} novedades más de nivel ${nivelTabla}, disponibles en el dashboard.</p>` : ''}` : '<div class="i-salto"></div>'}
 
         <div class="i-firma">
-          <p>Quedamos atentos a sus comentarios. El detalle completo y las ${fotosN} evidencias fotográficas están disponibles en el dashboard de novedades.</p>
+          <p>El detalle completo de las ${total} novedades, con la acción adoptada en cada caso y las ${fotosN} evidencias fotográficas, está disponible en el dashboard de novedades: <b>${esc(enlace)}</b></p>
+          <p>Quedamos atentos a sus comentarios.</p>
           <p>Atentamente,</p>
           <div class="i-linea"></div>
           <b>${esc(inf.firma || '')}</b><span>${esc(inf.cargoFirma || '')}</span>
