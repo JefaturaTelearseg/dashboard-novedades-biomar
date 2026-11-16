@@ -470,7 +470,7 @@
     const enlace = META.enlace || (location.origin + location.pathname);
 
     const pagina = (html) => `<div class="i-pagina"><img class="i-membrete" src="img/marca/membrete.jpg" alt=""><div class="i-contenido">${html}</div></div>`;
-    $('#informe').innerHTML = pagina(`
+    asegurarContenedor().innerHTML = pagina(`
         <div class="i-cab">
           <div><span class="i-tag">Informe ejecutivo</span><h1>Novedades del servicio de monitoreo CCTV</h1><p>Cliente <b>BioMar</b> · Periodo ${periodo} · Corte al ${fechaHoy()}</p></div>
           <img src="img/marca/biomar.png" alt="BioMar">
@@ -541,20 +541,44 @@
       document.head.appendChild(s);
     });
   }
+  // El informe trae su propia hoja de estilos: se carga aquí aunque el navegador tenga en caché un index.html antiguo
+  const CSS_INFORME = 'css/informe.css?v=6';
+  function cargarEstilosInforme() {
+    const yaListo = [...document.styleSheets].some((s) => s.href && s.href.includes('informe.css') && (() => { try { return s.cssRules.length > 0; } catch (e) { return true; } })());
+    if (yaListo) return Promise.resolve();
+    return new Promise((ok, mal) => {
+      const l = document.createElement('link');
+      l.rel = 'stylesheet'; l.href = CSS_INFORME;
+      l.onload = ok; l.onerror = () => mal(new Error('No se pudo cargar el estilo del informe'));
+      document.head.appendChild(l);
+    });
+  }
+  function asegurarContenedor() {
+    let c = document.getElementById('informe');
+    if (!c) { c = document.createElement('div'); c.id = 'informe'; c.className = 'informe'; c.setAttribute('aria-hidden', 'true'); document.body.appendChild(c); }
+    return c;
+  }
   function esperarImagenes(cont) {
     const urls = [...cont.querySelectorAll('img')].map((i) => i.src)
       .concat([...cont.querySelectorAll('.foto-img')].map((d) => d.style.backgroundImage.slice(5, -2)));
     return Promise.all(urls.map((u) => new Promise((r) => { const im = new Image(); im.onload = im.onerror = r; im.src = u; })));
   }
   async function exportarPdf(soloArmar) {
-    const cont = $('#informe');
+    const cont = asegurarContenedor();
     const aviso = document.createElement('div');
     aviso.className = 'generando';
-    aviso.innerHTML = '<div><i></i>Generando informe PDF…</div>';
+    aviso.style.cssText = 'position:fixed;inset:0;z-index:300;display:grid;place-items:center;background:rgba(2,6,16,.7)';
+    aviso.innerHTML = '<div style="padding:18px 26px;border-radius:16px;background:#0b1838;border:1px solid rgba(0,212,255,.4);color:#fff;font-weight:700">Generando informe PDF…</div>';
     if (!soloArmar) document.body.appendChild(aviso);
-    cont.classList.add('armando');
     try {
+      await cargarEstilosInforme();
+      cont.classList.add('armando');
       await Promise.all([...LIBS.map(cargarScript), esperarImagenes(cont), document.fonts ? document.fonts.ready : null]);
+      // Comprobación: si la hoja no tiene tamaño A4 el estilo no se aplicó y no se genera un PDF dañado
+      const h0 = cont.querySelector('.i-pagina');
+      if (!h0 || Math.abs(h0.getBoundingClientRect().width / h0.getBoundingClientRect().height - 210 / 297) > 0.02) {
+        throw new Error('el formato del informe no se cargó. Recarga la página con Ctrl + F5 e inténtalo de nuevo.');
+      }
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
       const hojas = [...cont.querySelectorAll('.i-pagina')];
