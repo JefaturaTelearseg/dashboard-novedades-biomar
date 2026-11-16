@@ -299,19 +299,41 @@ button.tarjeta { text-align: left; color: inherit; font: inherit; }
 .seg.alto { background: var(--alto); } .seg.medio { background: var(--medio); } .seg.bajo { background: var(--bajo); }
 @media (max-width: 640px) { .columnas { gap: 4px; } .col .lbl { font-size: 9px; } }
 
-.horas { display: grid; grid-template-columns: repeat(24, 1fr); gap: 3px; }
-.hora { display: flex; flex-direction: column; gap: 5px; align-items: stretch; }
-.hora .celda { height: 56px; border-radius: 6px; background: rgba(0, 212, 255, var(--a, .04)); border: 1px solid rgba(0, 212, 255, .12); display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #fff; }
-.hora .celda.cero { color: transparent; border-color: rgba(255, 255, 255, .04); background: rgba(255, 255, 255, .02); }
-.hora small { text-align: center; font-size: 9.5px; color: var(--suave); }
-.hora:hover .celda { outline: 1px solid var(--acento); }
-.franjas { display: grid; grid-template-columns: 6fr 6fr 6fr 6fr; gap: 3px; margin-top: 10px; }
-.franjas div { padding: 7px 10px; border-radius: 8px; background: rgba(255, 255, 255, .03); border: 1px solid rgba(255, 255, 255, .05); font-size: 11.5px; color: var(--suave); }
-.franjas b { display: block; color: #fff; font-size: 15px; }
+.explica { margin: 5px 0 0; font-size: 12.5px; color: var(--texto-2); max-width: 720px; }
+.nota b { color: #fff; }
+.g-hora { display: grid; grid-template-columns: 34px 1fr; height: 250px; }
+.horas-graf { position: relative; display: grid; grid-template-columns: repeat(24, 1fr); grid-template-rows: 1fr 20px; column-gap: 4px; padding-bottom: 0; }
+.fondo-franja { grid-row: 1 / 3; border-radius: 10px; margin: 0 -2px; }
+.fondo-franja.f0 { background: rgba(0, 212, 255, .07); border: 1px solid rgba(0, 212, 255, .16); }
+.fondo-franja.f2 { background: rgba(255, 255, 255, .02); }
+.horas-graf .guia { position: absolute; left: 0; right: 0; border-top: 1px solid rgba(255, 255, 255, .06); pointer-events: none; }
+.col-h { grid-row: 1; position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 24px; cursor: default; z-index: 1; }
+.col-h .pila { width: min(22px, 80%); display: flex; flex-direction: column-reverse; gap: 2px; }
+.col-h .pila .seg:last-child { border-radius: 4px 4px 0 0; }
+.col-h .num { font-size: 11px; font-weight: 700; color: #fff; margin-bottom: 3px; }
+.col-h .lbl { position: absolute; bottom: 4px; font-size: 10px; color: var(--suave); }
+.col-h.pico .num { color: var(--acento); font-size: 13px; }
+.col-h.pico .lbl { color: var(--acento); font-weight: 700; }
+.col-h:hover .pila { filter: brightness(1.2); }
+.nombre-franja { grid-row: 2; z-index: 1; text-align: center; font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--texto-2); align-self: center; }
+.franjas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
+.franjas div { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, .03); border: 1px solid rgba(255, 255, 255, .06); }
+.franjas .f-ico { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; color: var(--suave); background: rgba(255, 255, 255, .05); }
+.franjas .f-ico svg { width: 18px; height: 18px; }
+.franjas b { color: #fff; font-size: 14px; }
+.franjas em { font-style: normal; font-weight: 700; color: var(--suave); margin-left: 4px; }
+.franjas small { display: block; font-size: 11.5px; color: var(--suave); margin-top: 2px; }
 .franjas div.max { border-color: var(--borde-fuerte); background: var(--primario-claro); }
+.franjas div.max .f-ico { color: var(--acento); background: rgba(0, 212, 255, .15); }
+.franjas div.max em { color: var(--acento); }
+.pie-graf { margin: 10px 0 0; font-size: 11.5px; color: var(--suave); }
+@media (max-width: 900px) { .franjas { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 640px) {
-  .horas { grid-template-columns: repeat(12, 1fr); }
-  .franjas { grid-template-columns: 1fr 1fr; }
+  .horas-graf { column-gap: 1px; }
+  .col-h .lbl { font-size: 8px; }
+  .col-h .num { font-size: 9px; }
+  .nombre-franja { font-size: 8px; letter-spacing: .5px; }
+  .franjas { grid-template-columns: 1fr; }
 }
 
 .barras-h { display: grid; gap: 10px; }

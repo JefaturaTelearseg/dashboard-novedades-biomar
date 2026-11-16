@@ -202,18 +202,44 @@
   }
 
   // ---------- Hora del día ----------
+  const FRANJAS = [
+    { nom: 'Madrugada', a: 0, b: 6, ico: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>' },
+    { nom: 'Mañana', a: 6, b: 12, ico: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 18a5 5 0 0 0-10 0M12 2v7M4.2 10.2l1.4 1.4M1 18h2M21 18h2M18.4 11.6l1.4-1.4M23 22H1M8 6l4-4 4 4"/></svg>' },
+    { nom: 'Tarde', a: 12, b: 18, ico: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2M12 20.5v2M4.6 4.6 6 6M18 18l1.4 1.4M1.5 12h2M20.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></svg>' },
+    { nom: 'Noche', a: 18, b: 24, ico: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 18a5 5 0 0 0-10 0M12 9V2M4.2 10.2l1.4 1.4M1 18h2M21 18h2M18.4 11.6l1.4-1.4M23 22H1M16 5l-4 4-4-4"/></svg>' }
+  ];
+  const hh = (n) => String(n).padStart(2, '0');
   function renderHora() {
-    const lista = filtrar().filter((n) => n.horaNum != null);
+    const todas = filtrar();
+    const lista = todas.filter((n) => n.horaNum != null);
+    const sinHora = todas.length - lista.length;
     const h = Array.from({ length: 24 }, () => ({ total: 0, ALTO: 0, MEDIO: 0, BAJO: 0 }));
     lista.forEach((n) => { h[n.horaNum].total++; h[n.horaNum][n.nivel]++; });
-    const max = Math.max(1, ...h.map((o) => o.total));
-    const franjas = [['Madrugada', 0, 6], ['Mañana', 6, 12], ['Tarde', 12, 18], ['Noche', 18, 24]].map(([nom, a, b]) => ({ nom, a, b, n: h.slice(a, b).reduce((s, o) => s + o.total, 0) }));
+    const { tope, ticks } = escala(Math.max(1, ...h.map((o) => o.total)));
+    const alto = 180;
+    const pico = h.reduce((a, o, i) => (o.total > h[a].total ? i : a), 0);
+    $('#nota-hora').innerHTML = h[pico].total ? `Hora más crítica: <b>${hh(pico)}:00 a ${hh(pico)}:59</b> (${h[pico].total} novedades)` : '';
+    const franjas = FRANJAS.map((f) => ({ ...f, n: h.slice(f.a, f.b).reduce((s, o) => s + o.total, 0) }));
     const fmax = Math.max(...franjas.map((f) => f.n));
     $('#g-hora').innerHTML =
-      `<div class="horas">${h.map((o, i) => `<div class="hora" data-tt="${esc(ttNiveles(`${String(i).padStart(2, '0')}:00 – ${String(i).padStart(2, '0')}:59`, o))}">
-          <div class="celda${o.total ? '' : ' cero'}" style="--a:${(0.12 + 0.78 * (o.total / max)).toFixed(2)}">${o.total || ''}</div>
-          <small>${String(i).padStart(2, '0')}h</small></div>`).join('')}</div>
-       <div class="franjas">${franjas.map((f) => `<div class="${f.n && f.n === fmax ? 'max' : ''}"><b>${f.n}</b>${f.nom} · ${String(f.a).padStart(2, '0')}h–${String(f.b).padStart(2, '0')}h · ${pct(f.n, lista.length)}%</div>`).join('')}</div>`;
+      `<div class="g-hora">
+        <div class="eje-y">${ticks.map((t) => `<span style="bottom:${44 + (t / tope) * alto}px">${t}</span>`).join('')}</div>
+        <div class="horas-graf">
+          ${FRANJAS.map((f, i) => `<span class="fondo-franja f${i}" style="grid-column:${f.a + 1} / ${f.b + 1}"></span>`).join('')}
+          ${ticks.map((t) => `<span class="guia" style="bottom:${44 + (t / tope) * alto}px"></span>`).join('')}
+          ${h.map((o, i) => `<div class="col-h${i === pico && o.total ? ' pico' : ''}" style="grid-column:${i + 1}" data-tt="${esc(ttNiveles(`De ${hh(i)}:00 a ${hh(i)}:59`, o))}">
+              ${o.total ? `<span class="num">${o.total}</span>` : ''}
+              <div class="pila">${NIVELES.filter((nv) => o[nv]).map((nv) => `<span class="seg ${NIVEL_INFO[nv].clase}" style="height:${(o[nv] / tope) * alto - 2}px"></span>`).join('')}</div>
+              <span class="lbl">${hh(i)}</span>
+            </div>`).join('')}
+          ${FRANJAS.map((f) => `<span class="nombre-franja" style="grid-column:${f.a + 1} / ${f.b + 1}">${f.nom}</span>`).join('')}
+        </div>
+      </div>
+      <div class="franjas">${franjas.map((f) => `<div class="${f.n && f.n === fmax ? 'max' : ''}">
+          <span class="f-ico">${f.ico}</span>
+          <span><b>${f.n} ${f.n === 1 ? 'novedad' : 'novedades'}</b> <em>${pct(f.n, lista.length)}%</em><small>${f.nom}: de ${hh(f.a)}:00 a ${hh(f.b - 1)}:59</small></span>
+        </div>`).join('')}</div>
+      ${sinHora ? `<p class="pie-graf">${sinHora} novedades del informe no tienen hora registrada y no se cuentan en este gráfico.</p>` : ''}`;
   }
 
   // ---------- Barras horizontales ----------
