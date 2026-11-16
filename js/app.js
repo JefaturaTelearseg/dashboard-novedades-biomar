@@ -397,6 +397,145 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
 
+  // ---------- Informe ejecutivo (PDF) ----------
+  const RECOMENDACION = {
+    rondas: 'Reforzar el control de las rondas de la Patrulla de Reacción en horario nocturno: horario fijo, reporte con evidencia fotográfica y verificación por el Centro de Monitoreo.',
+    descanso: 'Intensificar la supervisión de los agentes de garita en el turno de madrugada y formalizar los llamados de atención cuando la novedad se repita.',
+    vehiculo: 'Mantener la verificación inmediata de vehículos en el perímetro y llevar un registro de placas de los vehículos recurrentes.',
+    persona: 'Programar rondas preventivas en Terreno Nuevo y perímetros externos ante la presencia de personas o motocicletas.',
+    procedimiento: 'Reforzar con el personal de seguridad los procedimientos de apertura de puertas y resguardo con presencia de la Patrulla de Reacción.',
+    logistica: 'Definir zonas de estacionamiento iluminadas y con cobertura de cámaras para camiones, bañeras y tráileres.',
+    infraestructura: 'Atender las reparaciones de puertas de acceso y el mantenimiento del perímetro (poda, iluminación).'
+  };
+  function fechaHoy() {
+    const d = new Date();
+    return `${d.getDate()} de ${MESES[d.getMonth()].toLowerCase()} de ${d.getFullYear()}`;
+  }
+  function filtrosTexto() {
+    const t = [];
+    if (estado.nivel !== 'TODOS') t.push('Nivel ' + NIVEL_INFO[estado.nivel].nombre);
+    if (estado.mes !== '') t.push(MESES[Number(estado.mes)]);
+    if (estado.zona) t.push('Zona ' + estado.zona);
+    if (estado.cat) t.push(META.categorias[estado.cat]);
+    if (estado.q.trim()) t.push(`Búsqueda "${estado.q.trim()}"`);
+    return t.join(' · ');
+  }
+  function generarInforme(sinImprimir) {
+    const lista = filtrar();
+    if (!lista.length) { alert('No hay novedades con los filtros actuales.'); return; }
+    const inf = META.informe || {};
+    const total = lista.length;
+    const c = { ALTO: 0, MEDIO: 0, BAJO: 0 }; lista.forEach((n) => c[n.nivel]++);
+    const conHora = lista.filter((n) => n.horaNum != null);
+    const h = Array(24).fill(0); conHora.forEach((n) => h[n.horaNum]++);
+    const pico = h.reduce((a, v, i) => (v > h[a] ? i : a), 0);
+    const madr = h.slice(0, 6).reduce((s, v) => s + v, 0);
+    const cats = contar(lista, 'categoria');
+    const zonas = contar(lista, 'zona');
+    const meses = [...new Set(lista.map((n) => n.mes))].sort((a, b) => a - b);
+    const periodo = meses.length > 1 ? `${MESES[meses[0]]} a ${MESES[meses[meses.length - 1]]} ${META.anio}` : `${MESES[meses[0]]} ${META.anio}`;
+    const fotosN = new Set(lista.flatMap((n) => n.fotos)).size;
+    const filtros = filtrosTexto();
+    const catTxt = (o) => (META.categorias[o.clave] || o.clave).toLowerCase();
+
+    // Gráfico por mes (barras apiladas)
+    const porMes = meses.length ? Array.from({ length: meses[meses.length - 1] - meses[0] + 1 }, (_, i) => meses[0] + i).map((m) => {
+      const o = { m, total: 0, ALTO: 0, MEDIO: 0, BAJO: 0 }; lista.filter((n) => n.mes === m).forEach((n) => { o.total++; o[n.nivel]++; }); return o;
+    }) : [];
+    const maxMes = Math.max(1, ...porMes.map((o) => o.total));
+    const gMes = `<div class="i-mes">${porMes.map((o) => `<div class="i-col"><span class="i-num">${o.total || ''}</span>
+        <div class="i-pila">${NIVELES.filter((nv) => o[nv]).map((nv) => `<i class="${NIVEL_INFO[nv].clase}" style="height:${(o[nv] / maxMes) * 29}mm"></i>`).join('')}</div>
+        <span class="i-lbl">${MES_CORTO[o.m]}</span></div>`).join('')}</div>`;
+    const barras = (filas, nombre) => { const mx = Math.max(1, ...filas.map((o) => o.total)); return filas.map((o) => `<div class="i-fila"><span>${esc(nombre(o))}</span><span class="i-pista">${NIVELES.filter((nv) => o[nv]).map((nv) => `<i class="${NIVEL_INFO[nv].clase}" style="width:${(o[nv] / mx) * 100}%"></i>`).join('')}</span><b>${o.total}</b></div>`).join(''); };
+    const franjas = [['Madrugada', 0, 6], ['Mañana', 6, 12], ['Tarde', 12, 18], ['Noche', 18, 24]].map(([nom, a, b]) => ({ nom, a, b, n: h.slice(a, b).reduce((s, v) => s + v, 0) }));
+
+    const hallazgos = [
+      `Se registraron <b>${total} novedades</b> en el periodo; <b>${c.ALTO}</b> (${pct(c.ALTO, total)}%) son de nivel <b>Alto</b> y requieren atención inmediata.`,
+      cats[0] ? `El tipo de novedad más frecuente es <b>${catTxt(cats[0])}</b> (${cats[0].total} casos)${cats[1] ? `, seguido de <b>${catTxt(cats[1])}</b> (${cats[1].total})` : ''}.` : '',
+      conHora.length ? `El <b>${pct(madr, conHora.length)}%</b> de las novedades con hora registrada ocurrió en la madrugada (00:00 a 05:59); la hora más crítica es de <b>${hh(pico)}:00 a ${hh(pico)}:59</b>.` : '',
+      zonas[0] ? `La zona con más novedades es <b>${esc(zonas[0].clave)}</b> (${zonas[0].total})${zonas[1] ? `, seguida de <b>${esc(zonas[1].clave)}</b> (${zonas[1].total})` : ''}.` : '',
+      `La Patrulla de Reacción estuvo involucrada en <b>${lista.filter((n) => n.grupoInv === 'Patrulla de Reacción').length}</b> novedades y los agentes de seguridad en <b>${lista.filter((n) => n.grupoInv === 'Agente de Seguridad').length}</b>.`
+    ].filter(Boolean);
+    const recomendaciones = cats.slice(0, 4).map((o) => RECOMENDACION[o.clave]).filter(Boolean);
+
+    const altos = lista.filter((n) => n.nivel === 'ALTO').slice().reverse();
+    const filaNov = (n) => `<tr><td class="nw">${fechaTxt(n.fecha)}${n.hora ? `<br><small>${n.hora} h</small>` : ''}</td><td><span class="i-pill ${NIVEL_INFO[n.nivel].clase}">${NIVEL_INFO[n.nivel].nombre}</span></td><td>${esc(n.zona)}</td><td><b>${esc(n.titulo)}</b><br><small>${esc(n.detalle.length > 210 ? n.detalle.slice(0, 207) + '…' : n.detalle)}</small></td></tr>`;
+    const evid = lista.slice().sort((a, b) => NIVELES.indexOf(a.nivel) - NIVELES.indexOf(b.nivel) || b.fecha.localeCompare(a.fecha)).filter((n) => n.fotos.length);
+    const vistas = new Set(); const fotos = [];
+    evid.forEach((n) => { const f = n.fotos.find((x) => !vistas.has(x)); if (f && fotos.length < 6) { vistas.add(f); fotos.push({ f, n }); } });
+    const resto = lista.filter((n) => n.nivel !== 'ALTO').slice().reverse();
+
+    $('#informe').innerHTML = `
+      <img class="i-membrete" src="img/marca/membrete.jpg" alt="">
+      <table class="i-marco"><thead><tr><td><div class="i-esp-sup"></div></td></tr></thead>
+      <tfoot><tr><td><div class="i-esp-inf"></div></td></tr></tfoot>
+      <tbody><tr><td class="i-cuerpo">
+
+        <div class="i-cab">
+          <div><span class="i-tag">Informe ejecutivo</span><h1>Novedades del servicio de monitoreo CCTV</h1><p>Cliente <b>BioMar</b> · Periodo ${periodo} · Corte al ${fechaHoy()}</p></div>
+          <img src="img/marca/biomar.png" alt="BioMar">
+        </div>
+        <div class="i-datos">
+          <div><small>Para</small>${esc(inf.destinatario || '')}<br><span>${esc(inf.cargoDestinatario || '')}</span></div>
+          <div><small>De</small>${esc(inf.firma || '')}<br><span>${esc(inf.cargoFirma || '')}</span></div>
+          <div><small>Fecha</small>Guayaquil, ${fechaHoy()}<br><span>${filtros ? 'Filtro: ' + esc(filtros) : 'Todas las novedades registradas'}</span></div>
+        </div>
+
+        <p class="i-texto">${esc(inf.destinatario || '')}:<br>Reciba un cordial saludo de parte de TeleArseg. Por medio del presente, el Centro de Monitoreo 24/7 pone a su conocimiento el consolidado de novedades registradas en las instalaciones de BioMar en el periodo ${periodo}, con corte al ${fechaHoy()}. La información proviene de la Matriz de Incidentes ${META.anio} y de los reportes de los operadores CCTV, con su evidencia fotográfica.</p>
+
+        <div class="i-kpis">
+          <div class="tot"><b>${total}</b><span>Novedades</span></div>
+          <div class="alto"><b>${c.ALTO}</b><span>Nivel Alto · ${pct(c.ALTO, total)}%</span></div>
+          <div class="medio"><b>${c.MEDIO}</b><span>Nivel Medio · ${pct(c.MEDIO, total)}%</span></div>
+          <div class="bajo"><b>${c.BAJO}</b><span>Nivel Bajo · ${pct(c.BAJO, total)}%</span></div>
+          <div class="tot"><b>${pct(madr, conHora.length)}%</b><span>En la madrugada</span></div>
+        </div>
+
+        <h2>Hallazgos principales</h2>
+        <ul class="i-lista">${hallazgos.map((t) => `<li>${t}</li>`).join('')}</ul>
+
+        <h2 class="i-salto">Análisis del periodo</h2>
+        <div class="i-dos">
+          <section><h3>Novedades por mes</h3>${gMes}
+            <div class="i-ley"><span class="alto">Alto</span><span class="medio">Medio</span><span class="bajo">Bajo</span></div></section>
+          <section><h3>Momento del día</h3>
+            <div class="i-franjas">${franjas.map((f) => `<div class="${f.n === Math.max(...franjas.map((x) => x.n)) && f.n ? 'max' : ''}"><b>${f.n}</b><span>${f.nom}</span><small>${hh(f.a)}:00 – ${hh(f.b - 1)}:59 · ${pct(f.n, conHora.length)}%</small></div>`).join('')}</div>
+          </section>
+        </div>
+
+        <div class="i-dos">
+          <section><h3>Tipo de novedad</h3>${barras(cats, (o) => ({ logistica: 'Vehículos de carga', procedimiento: 'Fallas de procedimiento', descanso: 'Agente en descanso/ausente' }[o.clave] || META.categorias[o.clave] || o.clave))}</section>
+          <section><h3>Zonas con más novedades</h3>${barras(zonas.slice(0, 7), (o) => o.clave)}</section>
+        </div>
+
+        <h2>Recomendaciones</h2>
+        <ol class="i-lista num">${recomendaciones.map((t) => `<li>${t}</li>`).join('')}</ol>
+
+        ${altos.length ? `<h2 class="i-salto">Novedades de nivel Alto (${altos.length})</h2>
+        <table class="i-tabla"><thead><tr><th>Fecha</th><th>Nivel</th><th>Zona</th><th>Novedad y acción adoptada</th></tr></thead><tbody>${altos.map(filaNov).join('')}</tbody></table>` : ''}
+
+        ${fotos.length ? `<h2 class="${altos.length ? '' : 'i-salto'}">Evidencias destacadas</h2>
+        <div class="i-fotos">${fotos.map((o) => `<figure><img src="img/evidencias/${o.f}.jpg" alt=""><figcaption><span class="i-pill ${NIVEL_INFO[o.n.nivel].clase}">${NIVEL_INFO[o.n.nivel].nombre}</span> ${esc(o.n.titulo)}<small>${fechaTxt(o.n.fecha)}${o.n.hora ? ' · ' + o.n.hora + ' h' : ''} · ${esc(o.n.zona)}</small></figcaption></figure>`).join('')}</div>` : ''}
+
+        ${resto.length ? `<h2 class="i-salto">Anexo: detalle de novedades de nivel Medio y Bajo (${resto.length})</h2>
+        <table class="i-tabla compacta"><thead><tr><th>Fecha</th><th>Nivel</th><th>Zona</th><th>Novedad y acción adoptada</th></tr></thead><tbody>${resto.map(filaNov).join('')}</tbody></table>` : ''}
+
+        <div class="i-firma">
+          <p>Quedamos atentos a sus comentarios. El detalle completo y las ${fotosN} evidencias fotográficas están disponibles en el dashboard de novedades.</p>
+          <p>Atentamente,</p>
+          <div class="i-linea"></div>
+          <b>${esc(inf.firma || '')}</b><span>${esc(inf.cargoFirma || '')}</span>
+        </div>
+      </td></tr></tbody></table>`;
+
+    if (sinImprimir === true) return;
+    const imgs = [...document.querySelectorAll('#informe img')];
+    const prev = document.title;
+    document.title = `Informe ejecutivo novedades BioMar - ${fechaHoy()}`;
+    Promise.all(imgs.map((im) => im.complete ? Promise.resolve() : new Promise((r) => { im.onload = im.onerror = r; })))
+      .then(() => { window.print(); setTimeout(() => { document.title = prev; }, 1000); });
+  }
+
   // ---------- Render general ----------
   function render() {
     sincronizarControles();
@@ -470,6 +609,7 @@
   $('#f-buscar').addEventListener('input', (e) => { clearTimeout(espera); espera = setTimeout(() => cambiar({ q: e.target.value }), 180); });
   $('#f-limpiar').addEventListener('click', () => cambiar({ nivel: 'TODOS', mes: '', zona: '', cat: '', q: '' }));
   $('#btn-csv').addEventListener('click', descargarCsv);
+  $('#btn-pdf').addEventListener('click', () => generarInforme());
   document.addEventListener('keydown', (e) => {
     if (!$('#visor').hidden) {
       if (e.key === 'Escape') cerrarVisor();
@@ -493,4 +633,7 @@
   renderPortada();
   render();
   marcarMenu();
+  // Enlace directo al informe: ...index.html?informe
+  // (?informe=preparar solo lo arma, sin abrir el diálogo de impresión)
+  if (/[?&]informe\b/.test(location.search)) setTimeout(() => generarInforme(/informe=preparar/.test(location.search)), 400);
 })();
